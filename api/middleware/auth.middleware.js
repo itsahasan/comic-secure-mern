@@ -1,28 +1,15 @@
-const jwt = require('jsonwebtoken');
-const { errorHandler } = require('../utils/error');
+const jwt = require("jsonwebtoken")
 
-function verifyToken(req, _res, next) {
-  const token = req.cookies.access_token;
+exports.verifyToken = (req, res, next) => {
+  const token = req.cookies.token
 
-  if (!token) {
-    return next(errorHandler(401, 'Authentication required'));
-  }
+  if (!token) return res.status(401).json({ message: "No token" })
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch (_error) {
-    next(errorHandler(401, 'Invalid or expired token'));
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = decoded
+    next()
+  } catch (err) {
+    res.status(401).json({ message: "Invalid token" })
   }
 }
-
-function allowRoles(...roles) {
-  return (req, _res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return next(errorHandler(403, 'Forbidden'));
-    }
-    next();
-  };
-}
-
-module.exports = { verifyToken, allowRoles };
