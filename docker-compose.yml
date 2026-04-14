@@ -1,0 +1,38 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: comics_mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  api:
+    build: ./api
+    container_name: comics_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+
+  client:
+    build: ./client
+    container_name: comics_client
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+
+volumes:
+  mongo_data:
