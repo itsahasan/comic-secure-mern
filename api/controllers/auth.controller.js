@@ -6,7 +6,11 @@ exports.signup = async (req, res) => {
   try {
     const { username, email, password, role } = req.body
 
-    // 🔐 Hash password
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already in use" })
+    }
+
     const hash = await bcrypt.hash(password, 12)
 
     const user = await User.create({
@@ -16,7 +20,15 @@ exports.signup = async (req, res) => {
       role: role || "fiend",
     })
 
-    res.status(201).json({ message: "User created", user })
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    })
   } catch (err) {
     res.status(500).json({ message: err.message })
   }
@@ -27,13 +39,15 @@ exports.signin = async (req, res) => {
     const { email, password } = req.body
 
     const user = await User.findOne({ email })
-    if (!user) return res.status(401).json({ message: "Invalid credentials" })
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" })
+    }
 
-    // 🔐 Compare password
     const match = await bcrypt.compare(password, user.password)
-    if (!match) return res.status(401).json({ message: "Invalid credentials" })
+    if (!match) {
+      return res.status(401).json({ message: "Invalid credentials" })
+    }
 
-    // 🔑 Create token with expiration
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -46,7 +60,15 @@ exports.signin = async (req, res) => {
       sameSite: "strict",
     })
 
-    res.json({ message: "Login successful" })
+    res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      },
+    })
   } catch (err) {
     res.status(500).json({ message: err.message })
   }
@@ -65,6 +87,11 @@ exports.signout = (req, res) => {
 exports.me = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password")
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" })
+    }
+
     res.json(user)
   } catch (err) {
     res.status(500).json({ message: err.message })
